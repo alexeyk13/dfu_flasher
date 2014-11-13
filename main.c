@@ -26,4 +26,5 @@ void main()
     printf("DFU Flasher reset\n\r");
 #endif
     board_reset();
+    for (;;) {}
 }
