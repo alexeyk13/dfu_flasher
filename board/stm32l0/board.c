@@ -7,10 +7,10 @@
 #include "../../board.h"
 #include "stm32.h"
 #include "stm32l0_config.h"
-#include "gpio.h"
-#include "power.h"
+#include "stm32l0_gpio.h"
+#include "stm32l0_power.h"
 #if (ENABLE_WDT)
-#include "wdt.h"
+#include "stm32l0_wdt.h"
 #endif
 
 void board_init()

@@ -10,7 +10,7 @@
 */
 
 
-#include "gpio.h"
+#include "stm32l0_gpio.h"
 #include "stm32.h"
 
 #define GPIO_PORT(pin)                                          (pin / 16)

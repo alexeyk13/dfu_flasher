@@ -9,12 +9,10 @@
     All rights reserved.
 */
 
-#ifndef POWER_H
-#define POWER_H
+#ifndef STM32L0_WDT_H
+#define STM32L0_WDT_H
 
-void power_init();
+void wdt_init();
+void wdt_kick();
 
-#define CORE_CLOCK                  32000000
-#define BUS_CLOCK                   32000000
-
-#endif // POWER_H
+#endif // STM32L0_WDT_H

@@ -9,10 +9,10 @@
     All rights reserved.
 */
 
-#include "uart.h"
+#include "stm32l0_uart.h"
 #include "stm32.h"
-#include "gpio.h"
-#include "power.h"
+#include "stm32l0_gpio.h"
+#include "stm32l0_power.h"
 #include "stm32l0_config.h"
 
 typedef USART_TypeDef* USART_TypeDef_P;

@@ -1,4 +1,15 @@
-#include "wdt.h"
+/*
+    RExOS - embedded RTOS
+    Copyright (c) 2011-2014, Alexey Kramarenko
+    All rights reserved.
+*/
+/*
+    USB DFU Flasher
+    Copyright (c) 2014, Alexey Kramarenko
+    All rights reserved.
+*/
+
+#include "stm32l0_wdt.h"
 #include "stm32.h"
 
 #define KICK_KEY                                        0xaaaa

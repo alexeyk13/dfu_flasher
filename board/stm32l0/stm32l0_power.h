@@ -9,13 +9,12 @@
     All rights reserved.
 */
 
-#ifndef UART_H
-#define UART_H
+#ifndef STM32L0_POWER_H
+#define STM32L0_POWER_H
 
-typedef enum {
-    UART_1 = 0,
-    UART_2,
-    UART_MAX
-}UART_PORT;
+void power_init();
 
-#endif // UART_H
+#define CORE_CLOCK                  32000000
+#define BUS_CLOCK                   32000000
+
+#endif // STM32L0_POWER_H

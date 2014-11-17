@@ -9,7 +9,7 @@
     All rights reserved.
 */
 
-#include "power.h"
+#include "stm32l0_power.h"
 #include "stm32.h"
 #include "stm32l0_config.h"
 

@@ -9,8 +9,8 @@
     All rights reserved.
 */
 
-#ifndef GPIO_H
-#define GPIO_H
+#ifndef STM32L0_GPIO_H
+#define STM32L0_GPIO_H
 
 #include <stdbool.h>
 
@@ -71,4 +71,4 @@ void gpio_enable_pin(PIN pin, unsigned int mode, AF af);
 void gpio_set_pin(PIN pin, bool set);
 bool gpio_get_pin(PIN pin);
 
-#endif // STM32_H
+#endif // STM32L0_GPIO
