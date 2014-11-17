@@ -5,8 +5,10 @@
 */
 
 #include "comm.h"
+#include "comm_private.h"
 #include "board.h"
 #include "config.h"
+#include "usbd.h"
 #if DFU_DEBUG
 #include "dbg.h"
 #endif
@@ -16,6 +18,7 @@ void comm_start()
     COMM comm;
     comm.stop = false;
     board_usb_init(&comm);
+    usbd_init(&comm);
 
     if (!board_usb_start(&comm))
     {

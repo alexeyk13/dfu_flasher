@@ -3,14 +3,20 @@
     Copyright (c) 2011-2014, Alexey Kramarenko
     All rights reserved.
 */
+/*
+    USB DFU Flasher
+    Copyright (c) 2014, Alexey Kramarenko
+    All rights reserved.
+*/
 
 #include "stm32l0_usb.h"
 #include "stm32.h"
 #include "stm32l0_gpio.h"
 #include "delay.h"
 #include "../../board.h"
-#include "../../comm.h"
+#include "../../comm_private.h"
 #include "../../usb.h"
+#include "../../usbd.h"
 #include "config.h"
 
 #ifndef NULL
@@ -89,32 +95,6 @@ static inline void stm32_usb_tx(SHARED_USB_DRV* drv, int num)
     ep->processed += size;
 }
 
-bool stm32_usb_ep_flush(SHARED_USB_DRV* drv, int num)
-{
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return false;
-    }
-    EP* ep = ep_data(drv, num);
-    if (ep == NULL)
-    {
-        error(ERROR_NOT_CONFIGURED);
-        return false;
-    }
-    if (ep->block != INVALID_HANDLE)
-    {
-        if (num & USB_EP_IN)
-            ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
-        else
-            ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
-        block_send(ep->block, ep->process);
-        ep->block = INVALID_HANDLE;
-    }
-    ep->io_active = false;
-    return true;
-}
-
 void stm32_usb_ep_set_stall(SHARED_USB_DRV* drv, int num)
 {
     if (!stm32_usb_ep_flush(drv, num))
@@ -147,44 +127,6 @@ bool stm32_usb_ep_is_stall(int num)
         return ((*ep_reg_data(num)) & USB_EPTX_STAT) == USB_EP_TX_STALL;
     else
         return ((*ep_reg_data(num)) & USB_EPRX_STAT) == USB_EP_RX_STALL;
-}
-
-USB_SPEED stm32_usb_get_speed(SHARED_USB_DRV* drv)
-{
-    //according to datasheet STM32L0 doesn't support low speed mode...
-    return USB_FULL_SPEED;
-}
-
-static inline void stm32_usb_reset(SHARED_USB_DRV* drv)
-{
-    USB->CNTR |= USB_CNTR_SUSPM;
-
-    //enable function
-    USB->DADDR = USB_DADDR_EF;
-
-    IPC ipc;
-    ipc.process = drv->usb.device;
-    ipc.param1 = stm32_usb_get_speed(drv);
-    ipc.cmd = USB_RESET;
-    ipc_ipost(&ipc);
-}
-
-static inline void stm32_usb_suspend(SHARED_USB_DRV* drv)
-{
-    IPC ipc;
-    USB->CNTR &= ~USB_CNTR_SUSPM;
-    ipc.process = drv->usb.device;
-    ipc.cmd = USB_SUSPEND;
-    ipc_ipost(&ipc);
-}
-
-static inline void stm32_usb_wakeup(SHARED_USB_DRV* drv)
-{
-    IPC ipc;
-    USB->CNTR |= USB_CNTR_SUSPM;
-    ipc.process = drv->usb.device;
-    ipc.cmd = USB_WAKEUP;
-    ipc_ipost(&ipc);
 }
 
 static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
@@ -270,156 +212,6 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
         }
         *ep_reg_data(num) = (*ep_reg_data(num)) & USB_EPREG_MASK & ~USB_EP_CTR_TX;
     }
-}
-
-static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
-{
-    if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return;
-    }
-    if (ep_data(drv, num) != NULL)
-    {
-        error(ERROR_ALREADY_CONFIGURED);
-        return;
-    }
-
-    //find free addr in FIFO
-    unsigned int fifo, i;
-    fifo = 0;
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.in[USB_EP_NUM(num)])
-            fifo += drv->usb.in[USB_EP_NUM(num)]->mps;
-        if (drv->usb.out[USB_EP_NUM(num)])
-            fifo += drv->usb.out[USB_EP_NUM(num)]->mps;
-    }
-    fifo += sizeof(USB_BUFFER_DESCRIPTOR) * USB_EP_COUNT_MAX;
-
-    EP* ep = malloc(sizeof(EP));
-    if (ep == NULL)
-        return;
-    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = ep) : (drv->usb.out[USB_EP_NUM(num)] = ep);
-    ep->block = INVALID_HANDLE;
-    ep->mps = 0;
-    ep->io_active = false;
-
-    uint16_t ctl = USB_EP_NUM(num);
-    //setup ep type
-    switch (ep_open->type)
-    {
-    case USB_EP_CONTROL:
-        ctl |= 1 << 9;
-        break;
-    case USB_EP_BULK:
-        ctl |= 0 << 9;
-        break;
-    case USB_EP_INTERRUPT:
-        ctl |= 3 << 9;
-        break;
-    case USB_EP_ISOCHRON:
-        ctl |= 2 << 9;
-        break;
-    }
-
-    //setup FIFO
-    if (num & USB_EP_IN)
-    {
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_TX = fifo;
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_TX = 0;
-    }
-    else
-    {
-        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_RX = fifo;
-        if (ep_open->size <= 62)
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((ep_open->size + 1) >> 1) << 10;
-        else
-            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((((ep_open->size + 3) >> 2) - 1) << 10) | (1 << 15);
-    }
-
-    ep->mps = ep_open->size;
-    ep->process = process;
-
-    *ep_reg_data(num) = ctl;
-    //set NAK, clear DTOG
-    if (num & USB_EP_IN)
-        ep_toggle_bits(num, USB_EPTX_STAT | USB_EP_DTOG_TX, USB_EP_TX_NAK);
-    else
-        ep_toggle_bits(num, USB_EPRX_STAT | USB_EP_DTOG_RX, USB_EP_RX_NAK);
-}
-
-void stm32_usb_open(SHARED_USB_DRV* drv, unsigned int handle, HANDLE process)
-{
-    union {
-        USB_EP_OPEN ep_open;
-        USB_OPEN uo;
-    } u;
-
-    if (handle == USB_HANDLE_DEVICE)
-    {
-        if (direct_read(process, (void*)&u.uo, sizeof(USB_OPEN)))
-           stm32_usb_open_device(drv, &u.uo);
-    }
-    else
-    {
-        if (direct_read(process, (void*)&u.ep_open, sizeof(USB_EP_OPEN)))
-            stm32_usb_open_ep(drv, process, handle, &u.ep_open);
-    }
-}
-
-static inline void stm32_usb_close_ep(SHARED_USB_DRV* drv, int num)
-{
-    if (!stm32_usb_ep_flush(drv, num))
-        return;
-    if (num & USB_EP_IN)
-        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_DIS);
-    else
-        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_DIS);
-
-    EP* ep = ep_data(drv, num);
-    free(ep);
-    num & USB_EP_IN ? (drv->usb.in[USB_EP_NUM(num)] = NULL) : (drv->usb.out[USB_EP_NUM(num)] = NULL);
-}
-
-static inline void stm32_usb_close_device(SHARED_USB_DRV* drv)
-{
-    //disable pullup
-    USB->BCDR &= ~USB_BCDR_DPPU;
-
-    int i;
-    //disable interrupts
-    NVIC_DisableIRQ(USB_IRQn);
-    irq_unregister(USB_IRQn);
-
-    //close all endpoints
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.out[i] != NULL)
-            stm32_usb_close_ep(drv, i);
-        if (drv->usb.in[i] != NULL)
-            stm32_usb_close_ep(drv, USB_EP_IN | i);
-    }
-    drv->usb.device = INVALID_HANDLE;
-
-    //power down, disable all interrupts
-    USB->DADDR = 0;
-    USB->CNTR = USB_CNTR_PDWN | USB_CNTR_FRES;
-
-    //disable clock
-    RCC->APB1ENR &= ~RCC_APB1ENR_USBEN;
-
-    //disable pins
-    ack_gpio(drv, GPIO_DISABLE_PIN, USB_DM, 0, 0);
-    ack_gpio(drv, GPIO_DISABLE_PIN, USB_DP, 0, 0);
-}
-
-static inline void stm32_usb_close(SHARED_USB_DRV* drv, unsigned int handle)
-{
-    if (handle == USB_HANDLE_DEVICE)
-        stm32_usb_close_device(drv);
-    else
-        stm32_usb_close_ep(drv, handle);
 }
 
 static inline void stm32_usb_set_address(SHARED_USB_DRV* drv, int addr)
@@ -521,7 +313,6 @@ void board_usb_init(COMM* comm)
         comm->drv.out[i].ptr = comm->drv.in[i].ptr = NULL;
         comm->drv.out[i].size = comm->drv.in[i].size = 0;
         comm->drv.out[i].mps = comm->drv.in[i].mps = 0;
-        comm->drv.out[i].io_active = comm->drv.in[i].io_active = false;
     }
     //enable DM/DP
     gpio_enable_pin(USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
@@ -529,7 +320,93 @@ void board_usb_init(COMM* comm)
 
     //enable clock
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+
+
+    //disable pullup, this will reset USB if not already
+    USB->BCDR &= ~USB_BCDR_DPPU;
+    delay_ms(50);
 }
+
+void board_usb_flush_ep(COMM* comm, int num)
+{
+    EP* ep = ep_data(comm, num);
+    ep->ptr = NULL;
+    if (num & USB_EP_IN)
+        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
+}
+
+void board_usb_close_ep(COMM* comm, int num)
+{
+    board_usb_flush_ep(comm, num);
+    if (num & USB_EP_IN)
+        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_DIS);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_DIS);
+    EP* ep = ep_data(comm, num);
+    ep->ptr = NULL;
+    ep->size = 0;
+    ep->mps = 0;
+}
+
+void board_usb_open_ep(COMM* comm, int num, USB_EP_TYPE type, int size)
+{
+    //find free addr in FIFO
+    unsigned int fifo, i;
+    fifo = 0;
+    //No any words in ref. manual, but all FIFO RX is going to EP0 RX.
+    if (num & USB_EP_IN)
+    {
+        for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+            fifo += comm->drv.in[i].mps;
+    }
+    fifo += sizeof(USB_BUFFER_DESCRIPTOR) * USB_EP_COUNT_MAX;
+
+    EP* ep = ep_data(comm, num);
+
+    uint16_t ctl = USB_EP_NUM(num);
+    //setup ep type
+    switch (type)
+    {
+    case USB_EP_CONTROL:
+        ctl |= 1 << 9;
+        break;
+    case USB_EP_BULK:
+        ctl |= 0 << 9;
+        break;
+    case USB_EP_INTERRUPT:
+        ctl |= 3 << 9;
+        break;
+    case USB_EP_ISOCHRON:
+        ctl |= 2 << 9;
+        break;
+    }
+
+    //setup FIFO
+    if (num & USB_EP_IN)
+    {
+        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_TX = fifo;
+        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_TX = 0;
+    }
+    else
+    {
+        USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].ADDR_RX = fifo;
+        if (size <= 62)
+            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((size + 1) >> 1) << 10;
+        else
+            USB_BUFFER_DESCRIPTORS[USB_EP_NUM(num)].COUNT_RX = ((((size + 3) >> 2) - 1) << 10) | (1 << 15);
+    }
+    ep->mps = size;
+
+    *ep_reg_data(num) = ctl;
+    //set NAK, clear DTOG
+    if (num & USB_EP_IN)
+        ep_toggle_bits(num, USB_EPTX_STAT | USB_EP_DTOG_TX, USB_EP_TX_NAK);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT | USB_EP_DTOG_RX, USB_EP_RX_NAK);
+}
+
 
 bool board_usb_start(COMM* comm)
 {
@@ -584,23 +461,19 @@ static inline void usb_reset(COMM* comm)
     comm->drv.suspend = false;
     //enable function
     USB->DADDR = USB_DADDR_EF;
-
-    //TODO: call device reset
-    printf("USB reset\n\r");
+    usbd_reset(comm);
 }
 
 static inline void usb_suspend(COMM* comm)
 {
     comm->drv.suspend = true;
-    //TODO: call device suspend
-    printf("USB suspend\n\r");
+    usbd_suspend(comm);
 }
 
 static inline void usb_wakeup(COMM* comm)
 {
     comm->drv.suspend = false;
-    //TODO: call device suspend
-    printf("USB wakeup\n\r");
+    usbd_wakeup(comm);
 }
 
 void board_usb_request(COMM* comm)

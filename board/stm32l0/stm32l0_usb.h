@@ -3,6 +3,11 @@
     Copyright (c) 2011-2014, Alexey Kramarenko
     All rights reserved.
 */
+/*
+    USB DFU Flasher
+    Copyright (c) 2014, Alexey Kramarenko
+    All rights reserved.
+*/
 
 #ifndef STM32L0_USB_H
 #define STM32L0_USB_H
@@ -17,7 +22,6 @@ typedef struct {
     void* ptr;
     unsigned int size, processed;
     uint16_t mps;
-    uint8_t io_active;
 } EP;
 
 typedef struct _USB {

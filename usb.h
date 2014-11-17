@@ -12,6 +12,8 @@
 #ifndef USB_H
 #define USB_H
 
+#include <stdint.h>
+
 typedef enum {
     USB_EP_CONTROL = 0,
     USB_EP_ISOCHRON,

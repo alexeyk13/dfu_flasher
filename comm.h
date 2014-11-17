@@ -7,13 +7,7 @@
 #ifndef COMM_H
 #define COMM_H
 
-#include "config.h"
-#include <stdbool.h>
-
-typedef struct {
-    DRV drv;
-    bool stop;
-}COMM;
+typedef struct _COMM COMM;
 
 void comm_start();
 
