@@ -5,6 +5,17 @@
 */
 
 #include "stm32l0_usb.h"
+#include "stm32l0_gpio.h"
+#include "../../board.h"
+#include "../../comm.h"
+
+#ifndef NULL
+#define NULL    0
+#endif
+
+#define USB_DM                          A11
+#define USB_DP                          A12
+
 /*
 #include "../sys.h"
 #include "../usb.h"
@@ -21,9 +32,6 @@
 #if (MONOLITH_USB)
 #include "stm32_core_private.h"
 #endif
-
-#define USB_DM                          A11
-#define USB_DP                          A12
 
 typedef struct {
   HANDLE process;
@@ -650,25 +658,6 @@ void stm32_usb_init(SHARED_USB_DRV* drv)
     }
 }
 
-#if (SYS_INFO)
-static inline void stm32_usb_info(SHARED_USB_DRV* drv)
-{
-    int i;
-    _printd("STM32 USB(L) driver info\n\r\n\r");
-    _printd("device\n\r");
-    _printd("Speed: FULL SPEED, address: %d\n\r", USB->DADDR & 0x7f);
-    _printd("Active endpoints:\n\r");
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        if (drv->usb.out[i] != NULL)
-            _printd("OUT%d: %s %d bytes\n\r", i, EP_TYPES[((*ep_reg_data(i)) >> 9) & 3], drv->usb.out[i]->mps);
-        if (drv->usb.in[i] != NULL)
-            _printd("IN%d: %s %d bytes\n\r", i, EP_TYPES[((*ep_reg_data(i)) >> 9) & 3], drv->usb.in[i]->mps);
-
-    }
-}
-#endif
-
 bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc)
 {
     bool need_post = false;
@@ -774,3 +763,65 @@ void stm32_usbl()
 }
 #endif
 */
+
+
+void board_usb_init(COMM* comm)
+{
+    int i;
+    comm->usb.addr = 0;
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    {
+        comm->usb.out[i].ptr = comm->usb.in[i].ptr = NULL;
+        comm->usb.out[i].size = comm->usb.in[i].size = 0;
+        comm->usb.out[i].mps = comm->usb.in[i].mps = 0;
+        comm->usb.out[i].io_active = comm->usb.in[i].io_active = false;
+    }
+}
+
+bool board_usb_start(COMM* comm)
+{
+    int i;
+    //enable DM/DP
+    gpio_enable_pin(USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+    gpio_enable_pin(USB_DP, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
+/*
+    //enable clock
+    RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+
+    //power up and wait tStartup
+    USB->CNTR &= ~USB_CNTR_PDWN;
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    __NOP();
+    USB->CNTR &= ~USB_CNTR_FRES;
+
+    //clear any spurious pending interrupts
+    USB->ISTR = 0;
+
+    //buffer descriptor table at top
+    USB->BTABLE = 0;
+
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    {
+        USB_BUFFER_DESCRIPTORS[i].ADDR_TX = 0;
+        USB_BUFFER_DESCRIPTORS[i].COUNT_TX = 0;
+        USB_BUFFER_DESCRIPTORS[i].ADDR_RX = 0;
+        USB_BUFFER_DESCRIPTORS[i].COUNT_RX = 0;
+    }
+
+    //enable interrupts
+    irq_register(USB_IRQn, stm32_usb_on_isr, drv);
+    NVIC_EnableIRQ(USB_IRQn);
+    NVIC_SetPriority(USB_IRQn, 13);
+
+    //Unmask common interrupts
+    USB->CNTR |= USB_CNTR_SUSPM | USB_CNTR_RESETM | USB_CNTR_CTRM;
+#if (USB_DEBUG_ERRORS)
+    USB->CNTR |= USB_CNTR_PMAOVRM | USB_CNTR_ERRM;
+#endif
+
+    //pullup device
+    USB->BCDR |= USB_BCDR_DPPU;*/
+}

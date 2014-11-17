@@ -8,6 +8,10 @@
 #define STM32L0_USB_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+//0 control, 1 for DFU class
+#define USB_EP_COUNT_MAX            2
 
 typedef struct {
     void* ptr;
@@ -16,14 +20,13 @@ typedef struct {
     uint8_t io_active;
 } EP;
 
-typedef struct {
-  EP* out[USB_EP_COUNT_MAX];
-  EP* in[USB_EP_COUNT_MAX];
+typedef struct _USB {
+  EP out[USB_EP_COUNT_MAX];
+  EP in[USB_EP_COUNT_MAX];
   uint8_t addr;
 } USB;
 
 
-//void board_usb_init(SHARED_USB_DRV* drv);
 //bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
 
 #endif // STM32L0_USB_H

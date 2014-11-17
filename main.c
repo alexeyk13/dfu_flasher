@@ -6,6 +6,7 @@
 
 #include "board.h"
 #include "config.h"
+#include "comm.h"
 #if DFU_DEBUG
 #include "dbg.h"
 
@@ -21,6 +22,8 @@ void main()
     board_dbg_init();
     printf("DFU Flasher V%s started...\n\r", VERSION);
 #endif
+
+    comm_start();
 
 #if DFU_DEBUG
     printf("DFU Flasher reset\n\r");
