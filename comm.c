@@ -17,29 +17,27 @@ void comm_start()
     comm.stop = false;
     board_usb_init(&comm);
 
-    while (!comm.stop)
+    if (!board_usb_start(&comm))
     {
-        if (!board_usb_start(&comm))
-        {
-    #if DFU_DEBUG
-            printf("Comm error: USB start error\n\r");
-    #endif
-            return;
-        }
-    #if DFU_DEBUG
-        printf("Comm: USB started\n\r");
-    #endif
-
-        while (!comm.stop && board_usb_request(&comm)) {}
-
 #if DFU_DEBUG
-        if (!comm.stop)
-            printf("Comm error: USB event failure, restarting\n\r");
+        printf("Comm error: USB start error\n\r");
 #endif
-        board_usb_stop(&comm);
-#if DFU_DEBUG
-        printf("Comm: USB stopped\n\r");
-#endif
+        return;
     }
+#if DFU_DEBUG
+    printf("Comm: USB started\n\r");
+#endif
 
+    while (!comm.stop)
+        board_usb_request(&comm);
+
+#if DFU_DEBUG
+    if (!comm.stop)
+        printf("Comm error: USB event failure, restarting\n\r");
+#endif
+    board_usb_stop(&comm);
+
+#if DFU_DEBUG
+    printf("Comm: USB stopped\n\r");
+#endif
 }

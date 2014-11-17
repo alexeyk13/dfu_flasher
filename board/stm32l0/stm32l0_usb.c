@@ -272,55 +272,6 @@ static inline void stm32_usb_ctr(SHARED_USB_DRV* drv)
     }
 }
 
-void stm32_usb_on_isr(int vector, void* param)
-{
-    SHARED_USB_DRV* drv = (SHARED_USB_DRV*)param;
-    uint16_t sta = USB->ISTR;
-
-    //transfer complete. Most often called
-    if (sta & USB_ISTR_CTR)
-    {
-        stm32_usb_ctr(drv);
-        return;
-    }
-    //rarely called
-    if (sta & USB_ISTR_RESET)
-    {
-        stm32_usb_reset(drv);
-        USB->ISTR &= ~USB_ISTR_RESET;
-        return;
-    }
-    if ((sta & USB_ISTR_SUSP) && (USB->CNTR & USB_CNTR_SUSPM))
-    {
-        stm32_usb_suspend(drv);
-        USB->ISTR &= ~USB_ISTR_SUSP;
-        return;
-    }
-    if (sta & USB_ISTR_WKUP)
-    {
-        stm32_usb_wakeup(drv);
-        USB->ISTR &= ~USB_ISTR_WKUP;
-        return;
-    }
-#if (USB_DEBUG_ERRORS)
-    IPC ipc;
-    if (sta & USB_ISTR_ERR)
-    {
-        ipc.process = process_iget_current();
-        ipc.cmd = STM32_USB_ERROR;
-        ipc_ipost(&ipc);
-        USB->ISTR &= ~USB_ISTR_ERR;
-    }
-    if (sta & USB_ISTR_PMAOVR)
-    {
-        ipc.process = process_iget_current();
-        ipc.cmd = STM32_USB_OVERFLOW;
-        ipc_ipost(&ipc);
-        USB->ISTR &= ~USB_ISTR_PMAOVR;
-    }
-#endif
-}
-
 static inline void stm32_usb_open_ep(SHARED_USB_DRV* drv, HANDLE process, int num, USB_EP_OPEN* ep_open)
 {
     if (USB_EP_NUM(num) >=  USB_EP_COUNT_MAX)
@@ -557,18 +508,6 @@ static inline void stm32_usb_write(SHARED_USB_DRV* drv, unsigned int num, HANDLE
     stm32_usb_tx(drv, num);
 }
 
-void stm32_usb_init(SHARED_USB_DRV* drv)
-{
-    int i;
-    drv->usb.device = INVALID_HANDLE;
-    drv->usb.addr = 0;
-    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
-    {
-        drv->usb.out[i] = NULL;
-        drv->usb.in[i] = NULL;
-    }
-}
-
 */
 
 
@@ -576,6 +515,7 @@ void board_usb_init(COMM* comm)
 {
     int i;
     comm->drv.addr = 0;
+    comm->drv.suspend = false;
     for (i = 0; i < USB_EP_COUNT_MAX; ++i)
     {
         comm->drv.out[i].ptr = comm->drv.in[i].ptr = NULL;
@@ -583,17 +523,17 @@ void board_usb_init(COMM* comm)
         comm->drv.out[i].mps = comm->drv.in[i].mps = 0;
         comm->drv.out[i].io_active = comm->drv.in[i].io_active = false;
     }
-}
-
-bool board_usb_start(COMM* comm)
-{
-    int i;
     //enable DM/DP
     gpio_enable_pin(USB_DM, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
     gpio_enable_pin(USB_DP, GPIO_MODE_AF | GPIO_OT_PUSH_PULL | GPIO_SPEED_HIGH, AF0);
 
     //enable clock
     RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+}
+
+bool board_usb_start(COMM* comm)
+{
+    int i;
 
     //power up and wait tStartup
     USB->CNTR &= ~USB_CNTR_PDWN;
@@ -621,10 +561,49 @@ bool board_usb_start(COMM* comm)
 
 void board_usb_stop(COMM* comm)
 {
-    //TODO:
+    //disable pullup
+    USB->BCDR &= ~USB_BCDR_DPPU;
+
+    int i;
+    //close all endpoints
+    for (i = 0; i < USB_EP_COUNT_MAX; ++i)
+    {
+/*        if (comm->out[i] != NULL)
+            stm32_usb_close_ep(drv, i);
+        if (drv->usb.in[i] != NULL)
+            stm32_usb_close_ep(drv, USB_EP_IN | i);*/
+    }
+
+    //power down, disable all interrupts
+    USB->DADDR = 0;
+    USB->CNTR = USB_CNTR_PDWN | USB_CNTR_FRES;
 }
 
-bool board_usb_request(COMM* comm)
+static inline void usb_reset(COMM* comm)
+{
+    comm->drv.suspend = false;
+    //enable function
+    USB->DADDR = USB_DADDR_EF;
+
+    //TODO: call device reset
+    printf("USB reset\n\r");
+}
+
+static inline void usb_suspend(COMM* comm)
+{
+    comm->drv.suspend = true;
+    //TODO: call device suspend
+    printf("USB suspend\n\r");
+}
+
+static inline void usb_wakeup(COMM* comm)
+{
+    comm->drv.suspend = false;
+    //TODO: call device suspend
+    printf("USB wakeup\n\r");
+}
+
+void board_usb_request(COMM* comm)
 {
     //TODO: wdt
 
@@ -634,39 +613,36 @@ bool board_usb_request(COMM* comm)
     if (sta & USB_ISTR_CTR)
     {
         printf("USB CTR\n\r");
-//        stm32_usb_ctr(drv);
-        return true;
+//        usb_ctr(drv);
+        return;
     }
     //rarely called
     if (sta & USB_ISTR_RESET)
     {
-        printf("USB reset\n\r");
-//        stm32_usb_reset(drv);
+        usb_reset(comm);
         USB->ISTR &= ~USB_ISTR_RESET;
-        return true;
+        return;
     }
-    if ((sta & USB_ISTR_SUSP) && (USB->CNTR & USB_CNTR_SUSPM))
+    if ((sta & USB_ISTR_SUSP) && (!comm->drv.suspend))
     {
-        printf("USB suspend\n\r");
-//        stm32_usb_suspend(drv);
+        usb_suspend(comm);
         USB->ISTR &= ~USB_ISTR_SUSP;
-        return true;
+        return;
     }
     if (sta & USB_ISTR_WKUP)
     {
-        printf("USB wakeup\n\r");
-//        stm32_usb_wakeup(drv);
+        usb_wakeup(comm);
         USB->ISTR &= ~USB_ISTR_WKUP;
-        return true;
+        return;
     }
-//#if (USB_DEBUG_ERRORS)
+#if (USB_DEBUG_ERRORS)
     if (sta & USB_ISTR_ERR)
     {
 #if (DFU_DEBUG)
         printf("USB hardware error\n\r");
 #endif
         USB->ISTR &= ~USB_ISTR_ERR;
-        return false;
+        return;
     }
     if (sta & USB_ISTR_PMAOVR)
     {
@@ -674,10 +650,8 @@ bool board_usb_request(COMM* comm)
         printf("USB overflow\n\r");
 #endif
         USB->ISTR &= ~USB_ISTR_PMAOVR;
-        return false;
+        return;
     }
-//#endif
-    //no event, success
-    return true;
+#endif
 }
 

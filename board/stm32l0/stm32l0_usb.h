@@ -24,6 +24,7 @@ typedef struct _USB {
   EP out[USB_EP_COUNT_MAX];
   EP in[USB_EP_COUNT_MAX];
   uint8_t addr;
+  bool suspend;
 } DRV;
 
 #endif // STM32L0_USB_H
