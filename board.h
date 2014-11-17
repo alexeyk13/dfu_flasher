@@ -20,7 +20,7 @@ extern void board_dbg(const char *const buf, unsigned int size);
 //USB
 extern void board_usb_init(COMM* comm);
 extern bool board_usb_start(COMM* comm);
-extern bool board_usb_stop(COMM* comm);
-extern bool board_usb_wait_for_event(COMM* comm);
+extern void board_usb_stop(COMM* comm);
+extern bool board_usb_request(COMM* comm);
 
 #endif // BOARD_H

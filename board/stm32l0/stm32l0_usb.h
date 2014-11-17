@@ -24,9 +24,6 @@ typedef struct _USB {
   EP out[USB_EP_COUNT_MAX];
   EP in[USB_EP_COUNT_MAX];
   uint8_t addr;
-} USB;
-
-
-//bool stm32_usb_request(SHARED_USB_DRV* drv, IPC* ipc);
+} DRV;
 
 #endif // STM32L0_USB_H

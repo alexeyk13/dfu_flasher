@@ -8,9 +8,11 @@
 #define COMM_H
 
 #include "config.h"
+#include <stdbool.h>
 
 typedef struct {
-    USB usb;
+    DRV drv;
+    bool stop;
 }COMM;
 
 void comm_start();
