@@ -14,7 +14,7 @@
 #define VERSION                     "0.1"
 #endif
 
-void  main() __attribute__ ((section (".loader")));
+void main() __attribute__ ((section (".loader")));
 
 void main()
 {

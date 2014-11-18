@@ -23,13 +23,18 @@ extern void board_dbg(const char *const buf, unsigned int size);
 extern void delay_us(unsigned int us);
 extern void delay_ms(unsigned int ms);
 
-//USB
+//USB device
 extern void board_usb_init(COMM* comm);
 extern bool board_usb_start(COMM* comm);
 extern void board_usb_stop(COMM* comm);
 extern void board_usb_request(COMM* comm);
+extern void board_usb_set_address(COMM* comm, unsigned int address);
+
+//USB endpoint
 void board_usb_open_ep(COMM* comm, int num, USB_EP_TYPE type, int size);
 void board_usb_close_ep(COMM* comm, int num);
 void board_usb_flush_ep(COMM* comm, int num);
+void board_usb_tx(COMM* comm, int num, char *data, int size);
+void board_usb_rx(COMM* comm, int num, char* data, int size);
 
 #endif // BOARD_H

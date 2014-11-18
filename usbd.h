@@ -14,6 +14,7 @@
 
 #include "comm.h"
 #include "usb.h"
+#include "config.h"
 
 typedef enum {
     USBD_STATE_DEFAULT = 0,
@@ -32,16 +33,34 @@ typedef enum {
 } USB_SETUP_STATE;
 
 typedef struct {
-    //SETUP state machine
-    SETUP setup;
+    // SETUP state machine
     USB_SETUP_STATE setup_state;
     // USBD state machine
     USBD_STATE state;
+    int configuration, iface, iface_alt;
+    char buf[USBD_BUF_SIZE];
 } USBD;
 
+//device functions for board
 void usbd_init(COMM* comm);
 void usbd_reset(COMM* comm);
 void usbd_suspend(COMM* comm);
 void usbd_wakeup(COMM* comm);
+void usbd_setup(COMM* comm);
+//endpoint functions for board
+void usbd_tx_complete(COMM* comm);
+void usbd_rx_complete(COMM* comm);
+
+//functions for class driver
+int usbd_tx(COMM* comm, const void* buf, unsigned int size);
+
+//callbacks for class driver
+extern void class_reset(COMM* comm);
+extern void class_suspend(COMM* comm);
+extern void class_wakeup(COMM* comm);
+extern void class_configured(COMM* comm);
+extern int class_setup(COMM* comm);
+extern void class_tx_complete(COMM* comm, int num);
+extern void class_rx_complete(COMM* comm, int num);
 
 #endif // USBD_H
