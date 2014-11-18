@@ -20,6 +20,8 @@
 
 /* exported global constant and functions */
 	.global core_init
+	.global delay_ms
+	.global delay_us
 
 /*********************** reset vector handler *********************/
 	.section  .text, "ax"
@@ -72,3 +74,25 @@ core_init:
 	mov	sp, r0
 
 	bx		r3
+
+	.thumb_func
+delay_ms:
+	ldr	r1, =DELAY_COEF_MS
+	muls	r0, r1
+
+loop_ms:
+	subs	r0, #1
+	bge	loop_ms
+
+	bx		lr
+
+	.thumb_func
+delay_us:
+	ldr	r1, =DELAY_COEF_US
+	muls	r0, r1
+
+loop_us:
+	subs	r0, #1
+	bge	loop_us
+
+	bx		lr

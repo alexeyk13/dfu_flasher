@@ -19,6 +19,10 @@ extern void board_reset();
 extern void board_dbg_init();
 extern void board_dbg(const char *const buf, unsigned int size);
 
+//delay
+extern void delay_us(unsigned int us);
+extern void delay_ms(unsigned int ms);
+
 //USB
 extern void board_usb_init(COMM* comm);
 extern bool board_usb_start(COMM* comm);

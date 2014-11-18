@@ -13,11 +13,8 @@
 #include "stm32l0_wdt.h"
 #endif
 
-#include "delay.h"
-
 void board_init()
 {
-    __disable_irq();
 #if (ENABLE_WDT)
     wdt_init();
 #endif

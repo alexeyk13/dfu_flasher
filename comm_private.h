@@ -10,10 +10,12 @@
 #include "config.h"
 #include <stdbool.h>
 #include "usbd.h"
+#include BOARD_USB
 
 typedef struct _COMM {
     DRV drv;
     USBD usbd;
+    SETUP setup;
     bool stop;
 }COMM;
 
