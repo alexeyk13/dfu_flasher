@@ -4,6 +4,7 @@
     All rights reserved.
 */
 
+#include "core.h"
 #include "board.h"
 #include "config.h"
 #include "comm.h"
@@ -17,6 +18,7 @@ void  main() __attribute__ ((section (".loader")));
 
 void main()
 {
+    core_init();
     board_init();
 #if DFU_DEBUG
     board_dbg_init();
