@@ -41,6 +41,13 @@ typedef struct {
     char buf[USBD_BUF_SIZE];
 } USBD;
 
+typedef enum {
+    USBD_FEATURE_ENDPOINT_HALT = 0,
+    USBD_FEATURE_DEVICE_REMOTE_WAKEUP,
+    USBD_FEATURE_TEST_MODE,
+    USBD_FEATURE_SELF_POWERED
+} USBD_FEATURES;
+
 //device functions for board
 void usbd_init(COMM* comm);
 void usbd_reset(COMM* comm);

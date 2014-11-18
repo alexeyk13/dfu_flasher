@@ -17,6 +17,11 @@
 #include "../../usb.h"
 #include "../../usbd.h"
 #include "config.h"
+#if (DFU_DEBUG) && (USB_DEBUG_ERRORS)
+#include "../../dbg.h"
+#endif
+
+
 
 #ifndef NULL
 #define NULL                                        0
@@ -62,44 +67,6 @@ static inline void memcpy16(void* dst, void* src, unsigned int size)
     for (i = 0; i < size; ++i)
         ((uint16_t*)dst)[i] = ((uint16_t*)src)[i];
 }
-
-/*
-void stm32_usb_ep_set_stall(SHARED_USB_DRV* drv, int num)
-{
-    if (!stm32_usb_ep_flush(drv, num))
-        return;
-    if (USB_EP_IN & num)
-        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_STALL);
-    else
-        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_STALL);
-}
-
-void stm32_usb_ep_clear_stall(SHARED_USB_DRV* drv, int num)
-{
-    if (!stm32_usb_ep_flush(drv, num))
-        return;
-    if (USB_EP_IN & num)
-        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
-    else
-        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
-}
-
-
-bool stm32_usb_ep_is_stall(int num)
-{
-    if (USB_EP_NUM(num) >= USB_EP_COUNT_MAX)
-    {
-        error(ERROR_INVALID_PARAMS);
-        return false;
-    }
-    if (USB_EP_IN & num)
-        return ((*ep_reg_data(num)) & USB_EPTX_STAT) == USB_EP_TX_STALL;
-    else
-        return ((*ep_reg_data(num)) & USB_EPRX_STAT) == USB_EP_RX_STALL;
-}
-
-*/
-
 
 void board_usb_init(COMM* comm)
 {
@@ -229,6 +196,32 @@ void board_usb_rx(COMM* comm, int num, char* data, int size)
     ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_VALID);
 }
 
+void board_usb_set_stall(COMM* comm, int num)
+{
+    board_usb_flush_ep(comm, num);
+    if (USB_EP_IN & num)
+        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_STALL);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_STALL);
+}
+
+void board_usb_clear_stall(COMM* comm, int num)
+{
+    board_usb_flush_ep(comm, num);
+    if (USB_EP_IN & num)
+        ep_toggle_bits(num, USB_EPTX_STAT, USB_EP_TX_NAK);
+    else
+        ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_NAK);
+}
+
+bool board_usb_is_stall(COMM* comm, int num)
+{
+    if (USB_EP_IN & num)
+        return ((*ep_reg_data(num)) & USB_EPTX_STAT) == USB_EP_TX_STALL;
+    else
+        return ((*ep_reg_data(num)) & USB_EPRX_STAT) == USB_EP_RX_STALL;
+}
+
 bool board_usb_start(COMM* comm)
 {
     //power up and wait tStartup
@@ -302,7 +295,7 @@ static inline void usb_ctr(COMM* comm)
                 usbd_rx_complete(comm);
             else
             {
-                printf("RX class complete\n\r");
+//                printf("RX class complete\n\r");
             }
         }
         else
@@ -326,7 +319,7 @@ static inline void usb_ctr(COMM* comm)
                 usbd_tx_complete(comm);
             else
             {
-                printf("TX class complete\n\r");
+//                printf("TX class complete\n\r");
             }
         }
         else

@@ -36,5 +36,8 @@ void board_usb_close_ep(COMM* comm, int num);
 void board_usb_flush_ep(COMM* comm, int num);
 void board_usb_tx(COMM* comm, int num, char *data, int size);
 void board_usb_rx(COMM* comm, int num, char* data, int size);
+void board_usb_set_stall(COMM* comm, int num);
+void board_usb_clear_stall(COMM* comm, int num);
+bool board_usb_is_stall(COMM* comm, int num);
 
 #endif // BOARD_H

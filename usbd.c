@@ -30,125 +30,6 @@ typedef struct {
 
 #pragma pack(pop)
 
-/*
-#include "../sys.h"
-#include "../usb.h"
-#include "../../userspace/lib/stdio.h"
-#include "../../userspace/block.h"
-#include "../../userspace/direct.h"
-#include "../../userspace/lib/stdlib.h"
-#include "sys_config.h"
-#include <string.h>
-#include "../../userspace/lib/array.h"
-#include "../file.h"
-
-static inline void usbd_set_feature(USBD* usbd, USBD_FEATURES feature, unsigned int param)
-{
-    switch(feature)
-    {
-    case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, param), 0, 0);
-        break;
-    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
-        usbd->remote_wakeup = true;
-        break;
-    case USBD_FEATURE_SELF_POWERED:
-        usbd->self_powered = true;
-        break;
-    default:
-        break;
-    }
-}
-
-static inline void usbd_clear_feature(USBD* usbd, USBD_FEATURES feature, unsigned int param)
-{
-    switch(feature)
-    {
-    case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_CLEAR_STALL, HAL_HANDLE(HAL_USB, param), 0, 0);
-        break;
-    case USBD_FEATURE_DEVICE_REMOTE_WAKEUP:
-        usbd->remote_wakeup = false;
-        break;
-    case USBD_FEATURE_SELF_POWERED:
-        usbd->self_powered = false;
-        break;
-    default:
-        break;
-    }
-}
-
-
-static inline int usbd_endpoint_get_status(USBD* usbd)
-{
-#if (USB_DEBUG_REQUESTS)
-    printf("USB: get endpoint status\n\r");
-#endif
-    uint16_t status = 0;
-    if (get(usbd->usb, USB_EP_IS_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0))
-        status |= 1 << 0;
-    return safecpy_write(usbd, &status, sizeof(uint16_t));
-}
-
-static inline int usbd_endpoint_set_feature(USBD* usbd)
-{
-    unsigned int res = -1;
-#if (USB_DEBUG_REQUESTS)
-    printf("USB: endpoint set feature\n\r");
-#endif
-    switch (usbd->setup.wValue)
-    {
-    case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
-        res = 0;
-        break;
-    default:
-        break;
-    }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
-    return res;
-}
-
-static inline int usbd_endpoint_clear_feature(USBD* usbd)
-{
-    unsigned int res = -1;
-#if (USB_DEBUG_REQUESTS)
-    printf("USB: endpoint clear feature\n\r");
-#endif
-    switch (usbd->setup.wValue)
-    {
-    case USBD_FEATURE_ENDPOINT_HALT:
-        ack(usbd->usb, USB_EP_CLEAR_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex & 0xffff), 0, 0);
-        res = 0;
-        break;
-    default:
-        break;
-    }
-    if (res >= 0)
-        inform(usbd, USBD_ALERT_FEATURE_SET, usbd->setup.wValue, usbd->setup.wIndex & 0xffff);
-    return res;
-}
-
-static inline int usbd_endpoint_request(USBD* usbd)
-{
-    int res = -1;
-    switch (usbd->setup.bRequest)
-    {
-    case USB_REQUEST_GET_STATUS:
-        res = usbd_endpoint_get_status(usbd);
-        break;
-    case USB_REQUEST_SET_FEATURE:
-        res = usbd_endpoint_set_feature(usbd);
-        break;
-    case USB_REQUEST_CLEAR_FEATURE:
-        res = usbd_endpoint_clear_feature(usbd);
-        break;
-    }
-    return res;
-}
-
-*/
 int usbd_tx(COMM* comm, const void *buf, unsigned int size)
 {
     if (size > USBD_BUF_SIZE)
@@ -159,7 +40,7 @@ int usbd_tx(COMM* comm, const void *buf, unsigned int size)
 
 static inline int usbd_device_get_status(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: get device status\n\r");
 #endif
     uint16_t status = 0;
@@ -168,7 +49,7 @@ static inline int usbd_device_get_status(COMM* comm)
 
 static inline int usbd_set_address(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB set ADDRESS %#X\n\r", comm->setup.wValue);
 #endif
     board_usb_set_address(comm, comm->setup.wValue);
@@ -211,19 +92,19 @@ static inline int usbd_get_descriptor(COMM* comm)
     switch (comm->setup.wValue >> 8)
     {
     case USB_DEVICE_DESCRIPTOR_INDEX:
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
         printf("USB get DEVICE descriptor\n\r");
 #endif
         res = usbd_tx(comm, &__DEVICE_DESCRIPTOR, __DEVICE_DESCRIPTOR.bLength);
         break;
     case USB_CONFIGURATION_DESCRIPTOR_INDEX:
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
         printf("USB get CONFIGURATION %d descriptor\n\r", index);
 #endif
         res = usbd_tx(comm, &__CONFIGURATION_DESCRIPTOR, ((const USB_CONFIGURATION_DESCRIPTOR_TYPE*)&__CONFIGURATION_DESCRIPTOR)->wTotalLength);
         break;
     case USB_STRING_DESCRIPTOR_INDEX:
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
         printf("USB get STRING %d descriptor, LangID: %#X\n\r", index, comm->setup.wIndex);
 #endif
         res = usbd_get_string_descriptor(comm, index, comm->setup.wIndex);
@@ -234,7 +115,7 @@ static inline int usbd_get_descriptor(COMM* comm)
 
 static inline int usbd_get_configuration(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: get configuration\n\r");
 #endif
     return usbd_tx(comm, &comm->usbd.configuration, 1);
@@ -242,7 +123,7 @@ static inline int usbd_get_configuration(COMM* comm)
 
 static inline int usbd_set_configuration(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: set configuration %d\n\r", comm->setup.wValue);
 #endif
     //read USB 2.0 specification for more details
@@ -295,10 +176,9 @@ static inline int usbd_device_request(COMM* comm)
     return res;
 }
 
-
 static inline int usbd_interface_get_status(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: get interface status\n\r");
 #endif
     uint16_t status = 0;
@@ -307,7 +187,7 @@ static inline int usbd_interface_get_status(COMM* comm)
 
 static inline int usbd_set_interface(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: interface set\n\r");
 #endif
     comm->usbd.iface = comm->setup.wIndex;
@@ -317,7 +197,7 @@ static inline int usbd_set_interface(COMM* comm)
 
 static inline int usbd_get_interface(COMM* comm)
 {
-#if (USB_DEBUG_REQUESTS)
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
     printf("USB: interface get\n\r");
 #endif
     return usbd_tx(comm, &comm->usbd.iface_alt, 1);
@@ -341,6 +221,71 @@ static inline int usbd_interface_request(COMM* comm)
     return res;
 }
 
+static inline int usbd_endpoint_get_status(COMM* comm)
+{
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
+    printf("USB: get endpoint status\n\r");
+#endif
+    uint16_t status = 0;
+    if (board_usb_is_stall(comm, comm->setup.wIndex & 0xffff))
+        status |= 1 << 0;
+    return usbd_tx(comm, &status, sizeof(uint16_t));
+}
+
+static inline int usbd_endpoint_set_feature(COMM* comm)
+{
+    unsigned int res = -1;
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
+    printf("USB: endpoint set feature\n\r");
+#endif
+    switch (comm->setup.wValue)
+    {
+    case USBD_FEATURE_ENDPOINT_HALT:
+        board_usb_set_stall(comm, comm->setup.wIndex & 0xffff);
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    return res;
+}
+
+static inline int usbd_endpoint_clear_feature(COMM* comm)
+{
+    unsigned int res = -1;
+#if (DFU_DEBUG) && (USB_DEBUG_REQUESTS)
+    printf("USB: endpoint clear feature\n\r");
+#endif
+    switch (comm->setup.wValue)
+    {
+    case USBD_FEATURE_ENDPOINT_HALT:
+        board_usb_clear_stall(comm, comm->setup.wIndex & 0xffff);
+        res = 0;
+        break;
+    default:
+        break;
+    }
+    return res;
+}
+
+static inline int usbd_endpoint_request(COMM* comm)
+{
+    int res = -1;
+    switch (comm->setup.bRequest)
+    {
+    case USB_REQUEST_GET_STATUS:
+        res = usbd_endpoint_get_status(comm);
+        break;
+    case USB_REQUEST_SET_FEATURE:
+        res = usbd_endpoint_set_feature(comm);
+        break;
+    case USB_REQUEST_CLEAR_FEATURE:
+        res = usbd_endpoint_clear_feature(comm);
+        break;
+    }
+    return res;
+}
+
 void usbd_setup_process(COMM* comm)
 {
     int res = -1;
@@ -356,7 +301,7 @@ void usbd_setup_process(COMM* comm)
             res = usbd_interface_request(comm);
             break;
         case BM_REQUEST_RECIPIENT_ENDPOINT:
-//            res = usbd_endpoint_request(comm);
+            res = usbd_endpoint_request(comm);
             break;
         }
         break;
@@ -522,7 +467,7 @@ void usbd_rx_complete(COMM* comm)
         comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
         break;
     default:
-#if (USB_DEBUG_ERRORS)
+#if (DFU_DEBUG) && (USB_DEBUG_ERRORS)
         printf("USBD invalid setup state on read: %d\n\r", comm->usbd.setup_state);
 #endif
         comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
