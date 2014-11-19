@@ -8,9 +8,12 @@
 #define DFUD_H
 
 #include "defs.h"
+#include "config.h"
 
 typedef struct {
     int status, state;
+    char buf[USBD_BUF_SIZE];
+    int size;
 }DFUD;
 
 void dfud_init(COMM* comm);
