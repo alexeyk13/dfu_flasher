@@ -12,7 +12,7 @@
 #ifndef USBD_H
 #define USBD_H
 
-#include "comm.h"
+#include "defs.h"
 #include "usb.h"
 #include "config.h"
 
@@ -67,7 +67,5 @@ extern void class_suspend(COMM* comm);
 extern void class_wakeup(COMM* comm);
 extern void class_configured(COMM* comm);
 extern int class_setup(COMM* comm);
-extern void class_tx_complete(COMM* comm, int num);
-extern void class_rx_complete(COMM* comm, int num);
 
 #endif // USBD_H

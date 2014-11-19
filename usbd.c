@@ -10,7 +10,7 @@
 */
 
 #include "usbd.h"
-#include "comm_private.h"
+#include "comm.h"
 #include "board.h"
 #include "usb_desc.h"
 #if (DFU_DEBUG)
@@ -135,8 +135,7 @@ static inline int usbd_set_configuration(COMM* comm)
 
         comm->usbd.state = USBD_STATE_ADDRESSED;
 
-        //TODO:
-//        inform(usbd, USBD_ALERT_RESET, 0, 0);
+        class_reset(comm);
     }
     else if (comm->usbd.state == USBD_STATE_ADDRESSED && comm->setup.wValue)
     {
@@ -145,8 +144,7 @@ static inline int usbd_set_configuration(COMM* comm)
         comm->usbd.iface_alt = 0;
         comm->usbd.state = USBD_STATE_CONFIGURED;
 
-        //TODO
-//        inform(usbd, USBD_ALERT_CONFIGURATION_SET, usbd->configuration, 0);
+        class_configured(comm);
     }
     return 0;
 }
@@ -307,8 +305,7 @@ void usbd_setup_process(COMM* comm)
         break;
     case BM_REQUEST_TYPE_CLASS:
     case BM_REQUEST_TYPE_VENDOR:
-        //TODO:
-//        res = class_request(comm);
+        res = class_setup(comm);
         break;
     }
 
@@ -355,13 +352,13 @@ void usbd_setup_process(COMM* comm)
     }
     else
     {
-/*        if ((comm->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
-            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, usbd->setup.wIndex), 0, 0);
+        if ((comm->setup.bmRequestType & BM_REQUEST_RECIPIENT) == BM_REQUEST_RECIPIENT_ENDPOINT)
+            board_usb_set_stall(comm, comm->setup.wIndex);
         else
         {
-            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, 0), 0, 0);
-            ack(usbd->usb, USB_EP_SET_STALL, HAL_HANDLE(HAL_USB, USB_EP_IN | 0), 0, 0);
-        }*/
+            board_usb_set_stall(comm, 0);
+            board_usb_set_stall(comm, USB_EP_IN | 0);
+        }
         comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
 #if (DFU_DEBUG) && (USB_DEBUG_ERRORS)
         printf("Unhandled ");
@@ -495,7 +492,7 @@ void usbd_reset(COMM* comm)
     board_usb_open_ep(comm, 0, USB_EP_CONTROL, USB_EP0_SIZE);
     board_usb_open_ep(comm, USB_EP_IN | 0, USB_EP_CONTROL, USB_EP0_SIZE);
 
-//    inform(usbd, USBD_ALERT_RESET, 0, 0);
+    class_reset(comm);
 }
 
 void usbd_suspend(COMM* comm)
@@ -506,8 +503,8 @@ void usbd_suspend(COMM* comm)
     board_usb_flush_ep(comm, 0);
     board_usb_flush_ep(comm, USB_EP_IN | 0);
     comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
-//    if (comm->usbd.state == USBD_STATE_CONFIGURED)
-//        inform(usbd, USBD_ALERT_SUSPEND, 0, 0);
+    if (comm->usbd.state == USBD_STATE_CONFIGURED)
+        class_suspend(comm);
 }
 
 void usbd_wakeup(COMM* comm)
@@ -516,6 +513,6 @@ void usbd_wakeup(COMM* comm)
     printf("USB device wakeup\n\r");
 #endif
 
-//    if (usbd->state == USBD_STATE_CONFIGURED)
-//        inform(usbd, USBD_ALERT_WAKEUP, 0, 0);
+    if (comm->usbd.state == USBD_STATE_CONFIGURED)
+        class_wakeup(comm);
 }

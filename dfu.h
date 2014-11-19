@@ -7,6 +7,8 @@
 #ifndef DFU_H
 #define DFU_H
 
+#include <stdint.h>
+
 /* DFU class requests */
 
 #define DFU_DETACH                                      0x0
@@ -17,40 +19,40 @@
 #define DFU_GETSTATE                                    0x5
 #define DFU_ABORT                                       0x6
 
-/* DFU standart error codes */
+/* DFU status codes */
 
 //No error condition is present.
-#define DFU_ERROR_OK                                    0x0
+#define DFU_STATUS_OK                                   0x0
 //File is not targeted for use by this device.
-#define DFU_ERROR_TARGET                                0x1
+#define DFU_STATUS_TARGET                               0x1
 //File is for this device but fails some vendor-specific verification test.
-#define DFU_ERROR_FILE                                  0x2
+#define DFU_STATUS_FILE                                 0x2
 //Device is unable to write memory.
-#define DFU_ERROR_WRITE                                 0x3
+#define DFU_STATUS_WRITE                                0x3
 //Memory erase function failed.
-#define DFU_ERROR_ERASE                                 0x4
+#define DFU_STATUS_ERASE                                0x4
 //Memory erase check failed.
-#define DFU_ERROR_CHECK_ERASED                          0x5
+#define DFU_STATUS_CHECK_ERASED                         0x5
 //Program memory function failed.
-#define DFU_ERROR_PROG                                  0x6
+#define DFU_STATUS_PROG                                 0x6
 //Programmed memory failed verification.
-#define DFU_ERROR_VERIFY                                0x7
+#define DFU_STATUS_VERIFY                               0x7
 //Cannot program memory due to received address that is out of range.
-#define DFU_ERROR_ADDRESS                               0x8
+#define DFU_STATUS_ADDRESS                              0x8
 //Received DFU_DNLOAD with wLength = 0, but device does not think it has all of the data yet.
-#define DFU_ERROR_NOTDONE                               0x9
+#define DFU_STATUS_NOTDONE                              0x9
 //Device’s firmware is corrupt. It cannot return to run-time (non-DFU) operations.
-#define DFU_ERROR_FIRMWARE                              0xa
+#define DFU_STATUS_FIRMWARE                             0xa
 //iString indicates a vendor-specific error.
-#define DFU_ERROR_VENDOR                                0xb
+#define DFU_STATUS_VENDOR                               0xb
 //Device detected unexpected USB reset signaling.
-#define DFU_ERROR_USBR                                  0xc
+#define DFU_STATUS_USBR                                 0xc
 //Device detected unexpected power on reset.
-#define DFU_ERROR_POR                                   0xd
+#define DFU_STATUS_POR                                  0xd
 //Something went wrong, but the device does not know what it was.
-#define DFU_ERROR_UNKNOWN                               0xe
+#define DFU_STATUS_UNKNOWN                              0xe
 //Device stalled an unexpected request.
-#define DFU_ERROR_STALLEDPKT                            0xf
+#define DFU_STATUS_STALLEDPKT                           0xf
 
 /* DFU state machine */
 
@@ -81,7 +83,7 @@
 //An error has occurred. Awaiting the DFU_CLRSTATUS request.
 #define DFU_STATE_ERROR                                 0xa
 
-/* DFU functional descriptor */
+/* DFU structures */
 
 #pragma pack(push, 1)
 
@@ -125,6 +127,20 @@ typedef struct {
                                                         //device can accept per control-write
                                                         //transaction.
 } DFU_FUNCTIONAL_DESCRIPTOR_TYPE, *P_DFU_FUNCTIONAL_DESCRIPTOR_TYPE;
+
+typedef struct {
+    uint8_t bStatus;                                    //An indication of the status resulting from the
+                                                        //execution of the most recent request.
+    uint8_t bwPollTime[3];                              //Minimum time, in milliseconds, that the host should
+                                                        //wait before sending a subsequent
+                                                        //DFU_GETSTATUS request.
+    uint8_t bState;                                     //An indication of the state that the device is going to
+                                                        //enter immediately following transmission of this
+                                                        //response. (By the time the host receives this
+                                                        //information, this is the current state of the device.)
+
+    uint8_t iString;                                    //Index of status description in string table.
+} DFU_STATUS_TYPE, *P_DFU_STATUS_TYPE;
 
 #pragma pack(pop)
 

@@ -13,7 +13,7 @@
 #include "stm32.h"
 #include "stm32l0_gpio.h"
 #include "../../board.h"
-#include "../../comm_private.h"
+#include "../../comm.h"
 #include "../../usb.h"
 #include "../../usbd.h"
 #include "config.h"
@@ -290,14 +290,7 @@ static inline void usb_ctr(COMM* comm)
         comm->drv.out[num].processed += size;
 
         if (comm->drv.out[num].processed >= comm->drv.out[num].size)
-        {
-            if (num == 0)
-                usbd_rx_complete(comm);
-            else
-            {
-//                printf("RX class complete\n\r");
-            }
-        }
+            usbd_rx_complete(comm);
         else
             ep_toggle_bits(num, USB_EPRX_STAT, USB_EP_RX_VALID);
         return;
@@ -314,14 +307,7 @@ static inline void usb_ctr(COMM* comm)
         }
 
         if (comm->drv.in[num].processed >= comm->drv.in[num].size)
-        {
-            if (num == 0)
-                usbd_tx_complete(comm);
-            else
-            {
-//                printf("TX class complete\n\r");
-            }
-        }
+            usbd_tx_complete(comm);
         else
             usb_fifo_tx(comm, USB_EP_IN | num);
     }

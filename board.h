@@ -7,7 +7,7 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include "comm.h"
+#include "defs.h"
 #include "usb.h"
 #include <stdbool.h>
 

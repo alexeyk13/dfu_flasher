@@ -7,8 +7,18 @@
 #ifndef COMM_H
 #define COMM_H
 
-typedef struct _COMM COMM;
+#include "config.h"
+#include <stdbool.h>
+#include "usbd.h"
+#include "dfud.h"
+#include BOARD_USB
 
-void comm_start();
+typedef struct _COMM {
+    DRV drv;
+    USBD usbd;
+    DFUD dfud;
+    SETUP setup;
+    bool stop;
+}COMM;
 
 #endif // COMM_H
