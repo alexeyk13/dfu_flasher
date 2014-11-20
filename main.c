@@ -24,8 +24,8 @@ void flasher()
     board_init();
 #if DFU_DEBUG
     board_dbg_init();
-    printf("DFU Flasher %d.%02d started...\n\r", VERSION >> 8, VERSION & 0xff);
-    printf("DFU protocol version: %d.%02d\n\r", PROTO_VERSION >> 8, PROTO_VERSION & 0xff);
+    printf("DFU Flasher %d.%d started...\n\r", VERSION >> 8, VERSION & 0xff);
+    printf("DFU protocol version: %d.%d\n\r", PROTO_VERSION >> 8, PROTO_VERSION & 0xff);
 #endif
 
     comm.stop = false;

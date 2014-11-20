@@ -11,9 +11,10 @@
 
 typedef struct {
     int cmd;
+    unsigned int param1, param2;
 } PROTOD;
 
-int protod_tx(COMM* comm, int* size);
+int protod_tx(COMM* comm, int* tx_size);
 int protod_rx(COMM* comm);
 
 void protod_init(COMM* comm);

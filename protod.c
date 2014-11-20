@@ -10,30 +10,50 @@
 #include "usbd.h"
 #include "dfu.h"
 #include "config.h"
+#include "board.h"
 #if (DFU_DEBUG) && (PROTO_DEBUG)
 #include "dbg.h"
 #endif
 
-static inline int protod_cmd_version(COMM* comm)
+#if (PROTO_ENABLE_UPLOAD)
+static inline int protod_cmd_read(COMM* comm, unsigned int addr, unsigned int size, int* tx_size)
+{
+    //TODO: check size/addr here
+    int res = board_flash_read(comm, addr, comm->dfud.buf, size);
+    if (res == DFU_STATUS_OK)
+        *tx_size = usbd_tx(comm, comm->dfud.buf, size);
+    return res;
+}
+
+#endif
+
+static inline int protod_cmd_version(COMM* comm, int* tx_size)
 {
     PROTO_VERSION_RESP version;
     version.loader = VERSION;
     version.protocol = PROTO_VERSION;
-    return usbd_tx(comm, &version, sizeof(PROTO_VERSION_RESP));
+    *tx_size = usbd_tx(comm, &version, sizeof(PROTO_VERSION_RESP));
+    return DFU_STATUS_OK;
 }
 
-int protod_tx(COMM* comm, int* size)
+int protod_tx(COMM* comm, int* tx_size)
 {
+    int res = DFU_STATUS_NOTDONE;
     switch (comm->protod.cmd)
     {
     case PROTO_CMD_VERSION:
-        *size = protod_cmd_version(comm);
+        res = protod_cmd_version(comm, tx_size);
         break;
+#if (PROTO_ENABLE_UPLOAD)
+    case PROTO_CMD_READ:
+        res = protod_cmd_read(comm, comm->protod.param1, comm->protod.param2, tx_size);
+        break;
+#endif
     default:
         return DFU_STATUS_NOTDONE;
     }
     comm->protod.cmd = 0;
-    return DFU_STATUS_OK;
+    return res;
 }
 
 int protod_rx(COMM* comm)
@@ -43,22 +63,31 @@ int protod_rx(COMM* comm)
     PROTO_REQ* req = (PROTO_REQ*)comm->dfud.buf;
     if (req->data_size + sizeof(PROTO_REQ) < comm->dfud.size)
         return DFU_STATUS_NOTDONE;
+    comm->protod.cmd = req->cmd;
+    comm->protod.param1 = req->param1;
+    comm->protod.param2 = req->param2;
     switch (req->cmd)
     {
+#if (PROTO_ENABLE_UPLOAD)
+    case PROTO_CMD_READ:
+#if (DFU_DEBUG) && (PROTO_DEBUG)
+        printf("cmd read %#X-%#X\n\r", req->param1, req->param1 + req->param2);
+#endif
+        break;
+#endif
+    case PROTO_CMD_VERSION:
+#if (DFU_DEBUG) && (PROTO_DEBUG)
+        printf("cmd version\n\r");
+#endif
+        break;
     case PROTO_CMD_WRITE:
         printf("cmd write\n\r");
         break;
     case PROTO_CMD_ERASE:
         printf("cmd erase\n\r");
         break;
-    case PROTO_CMD_ERASE_STATUS:
-        printf("cmd erase status\n\r");
-        break;
-    case PROTO_CMD_VERSION:
-#if (DFU_DEBUG) && (PROTO_DEBUG)
-        printf("cmd version\n\r");
-#endif
-        comm->protod.cmd = PROTO_CMD_VERSION;
+    case PROTO_CMD_STATUS:
+        printf("cmd status\n\r");
         break;
     case PROTO_CMD_LEAVE:
 #if (DFU_DEBUG) && (PROTO_DEBUG)

@@ -11,12 +11,12 @@
 
 #pragma pack(push, 1)
 
-#define PROTO_VERSION                       0x100
+#define PROTO_VERSION                       0x101
 
 #define PROTO_CMD_READ                      'r'
 #define PROTO_CMD_WRITE                     'w'
 #define PROTO_CMD_ERASE                     'e'
-#define PROTO_CMD_ERASE_STATUS              's'
+#define PROTO_CMD_STATUS                    's'
 #define PROTO_CMD_VERSION                   'v'
 #define PROTO_CMD_LEAVE                     'l'
 
