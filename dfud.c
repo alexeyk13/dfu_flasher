@@ -8,6 +8,7 @@
 #include "dfu.h"
 #include "comm.h"
 #include "board.h"
+#include "protod.h"
 #include <string.h>
 #if (DFU_DEBUG)
 #include "dbg.h"
@@ -46,6 +47,30 @@ static inline void dfu_set_error(COMM* comm, int code)
     }
 }
 
+static inline int dfud_upload(COMM* comm)
+{
+    int res = -1;
+    switch (comm->dfud.state)
+    {
+    case DFU_STATE_IDLE:
+        if (comm->setup.wLength > 0)
+        {
+            comm->dfud.status = protod_tx(comm, &res);
+            comm->dfud.state = comm->dfud.status == DFU_STATUS_OK ? DFU_STATE_IDLE : DFU_STATE_ERROR;
+            break;
+        }
+    default:
+        dfu_set_error(comm, DFU_STATUS_STALLEDPKT);
+    }
+#if (DFU_DEBUG) && (USB_DEBUG_CLASS_REQUESTS)
+    if (res >= 0)
+        printf("DFU UPLOAD: %d\n\r", res);
+    else
+        printf("DFU UPLOAD: ERROR\n\r");
+#endif
+    return res;
+}
+
 static inline int dfud_dnload(COMM* comm)
 {
 #if (DFU_DEBUG) && (USB_DEBUG_CLASS_REQUESTS)
@@ -66,8 +91,9 @@ static inline int dfud_dnload(COMM* comm)
     case DFU_STATE_DNLOAD_IDLE:
         if (comm->setup.wLength == 0)
         {
-            comm->dfud.state = DFU_STATE_MANIFEST_SYNC;
-            printf("TODO: process packet %d\n\r", comm->dfud.size);
+            comm->dfud.status = protod_rx(comm);
+            //skip manifestation phase
+            comm->dfud.state = comm->dfud.status == DFU_STATUS_OK ? DFU_STATE_IDLE : DFU_STATE_ERROR;
             break;
         }
     default:
@@ -82,10 +108,6 @@ static inline int dfud_get_status(COMM* comm)
     {
     case DFU_STATE_DNLOAD_SYNC:
         comm->dfud.state = DFU_STATE_DNLOAD_IDLE;
-        break;
-    case DFU_STATE_MANIFEST_SYNC:
-        //TODO: inform USB stop here
-        comm->dfud.state = DFU_STATE_IDLE;
         break;
     }
 
@@ -116,6 +138,9 @@ int class_setup(COMM* comm)
     int res = -1;
     switch (comm->setup.bRequest)
     {
+    case DFU_UPLOAD:
+        res = dfud_upload(comm);
+        break;
     case DFU_DNLOAD:
         res = dfud_dnload(comm);
         break;
