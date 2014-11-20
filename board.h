@@ -43,5 +43,6 @@ extern bool board_usb_is_stall(COMM* comm, int num);
 //flash
 extern int board_flash_read(COMM* comm, unsigned int addr, char* buf, unsigned int size);
 extern int board_flash_write(COMM* comm, unsigned int addr, const char* buf, unsigned int size);
+extern int board_flash_erase(COMM* comm, unsigned int addr, unsigned int size);
 
 #endif // BOARD_H

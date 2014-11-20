@@ -9,6 +9,7 @@
 #include "stm32l0_config.h"
 #include "stm32l0_gpio.h"
 #include "stm32l0_power.h"
+#include "stm32l0_flash.h"
 #if (ENABLE_WDT)
 #include "stm32l0_wdt.h"
 #endif
@@ -19,7 +20,7 @@ void board_init()
     wdt_init();
 #endif
     power_init();
-    gpio_set_pin(A5, true);
+    flash_init();
 }
 
 void board_reset()

@@ -5,10 +5,35 @@
 */
 
 #include "stm32l0_flash.h"
+#include "stm32.h"
 #include "../../board.h"
 #include "../../dfu.h"
 #include "config.h"
 #include <string.h>
+
+#define PEKEY1                                  0x89ABCDEF
+#define PEKEY2                                  0x02030405
+
+#define PRGKEY1                                 0x8C9DAEBF
+#define PRGKEY2                                 0x13141516
+
+#define FLASH_PAGE_SIZE                         128
+
+void flash_init()
+{
+    //unlock PELOCK bit
+    if (FLASH->PECR & FLASH_PECR_PELOCK)
+    {
+        FLASH->PEKEYR = PEKEY1;
+        FLASH->PEKEYR = PEKEY2;
+    }
+    //unlock PRGLOCK bit
+    if (FLASH->PECR & FLASH_PECR_PRGLOCK)
+    {
+        FLASH->PRGKEYR = PRGKEY1;
+        FLASH->PRGKEYR = PRGKEY2;
+    }
+}
 
 #if (PROTO_ENABLE_UPLOAD)
 int board_flash_read(COMM* comm, unsigned int addr, char* buf, unsigned int size)
@@ -18,4 +43,19 @@ int board_flash_read(COMM* comm, unsigned int addr, char* buf, unsigned int size
 }
 #endif
 
+int board_flash_erase(COMM* comm, unsigned int addr, unsigned int size)
+{
+    if ((size != FLASH_PAGE_SIZE) || (addr % FLASH_PAGE_SIZE))
+        return DFU_STATUS_CHECK_ERASED;
+    while (FLASH->SR & FLASH_SR_BSY) {}
+    FLASH->PECR = FLASH_PECR_ERASE | FLASH_PECR_PROG;
+    *((uint32_t*)addr) = 0;
+    while (FLASH->SR & FLASH_SR_BSY) {}
 
+    if (FLASH->SR & FLASH_SR_WRPERR)
+    {
+        FLASH->SR |= FLASH_SR_WRPERR;
+        return DFU_STATUS_ERASE;
+    }
+    return DFU_STATUS_OK;
+}
