@@ -15,6 +15,8 @@
 #include "defs.h"
 #include "usb.h"
 #include "config.h"
+#include "proto.h"
+#include <stdbool.h>
 
 typedef enum {
     USBD_STATE_DEFAULT = 0,
@@ -38,7 +40,8 @@ typedef struct {
     // USBD state machine
     USBD_STATE state;
     int configuration, iface, iface_alt;
-    char buf[USBD_BUF_SIZE];
+    char buf[PAGE_BUF_SIZE + sizeof(PROTO_REQ)];
+    bool pend_reset;
 } USBD;
 
 typedef enum {

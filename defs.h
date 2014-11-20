@@ -9,7 +9,6 @@
 
 typedef struct _COMM COMM;
 
-#define VERSION                              "1.0"
-#define PROTOCOL_VERSION                     "1.0"
+#define VERSION                              0x100
 
 #endif // DEFS_H

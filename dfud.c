@@ -153,6 +153,7 @@ int class_setup(COMM* comm)
     case DFU_CLRSTATUS:
     case DFU_ABORT:
         class_reset(comm);
+        res = 0;
         break;
     }
     return res;

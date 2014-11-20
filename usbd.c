@@ -32,8 +32,8 @@ typedef struct {
 
 int usbd_tx(COMM* comm, const void *buf, unsigned int size)
 {
-    if (size > USBD_BUF_SIZE)
-        size = USBD_BUF_SIZE;
+    if (size > PAGE_BUF_SIZE + sizeof(PROTO_REQ))
+        size = PAGE_BUF_SIZE + sizeof(PROTO_REQ);
     memcpy(comm->usbd.buf, buf, size);
     return size;
 }
@@ -443,6 +443,8 @@ void usbd_tx_complete(COMM* comm)
         break;
     case USB_SETUP_STATE_STATUS_IN:
         comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
+        if (comm->usbd.pend_reset)
+            comm->stop = true;
         break;
     default:
 #if (DFU_DEBUG) && (USB_DEBUG_ERRORS)
@@ -462,6 +464,8 @@ void usbd_rx_complete(COMM* comm)
         break;
     case USB_SETUP_STATE_STATUS_OUT:
         comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
+        if (comm->usbd.pend_reset)
+            comm->stop = true;
         break;
     default:
 #if (DFU_DEBUG) && (USB_DEBUG_ERRORS)
@@ -476,6 +480,7 @@ void usbd_init(COMM* comm)
 {
     comm->usbd.setup_state = USB_SETUP_STATE_REQUEST;
     comm->usbd.state = USBD_STATE_DEFAULT;
+    comm->usbd.pend_reset = false;
 }
 
 void usbd_reset(COMM* comm)

@@ -10,6 +10,8 @@
 #include "comm.h"
 #include "usbd.h"
 #include "dfud.h"
+#include "proto.h"
+#include "protod.h"
 #if DFU_DEBUG
 #include "dbg.h"
 #endif
@@ -22,14 +24,15 @@ void flasher()
     board_init();
 #if DFU_DEBUG
     board_dbg_init();
-    printf("DFU Flasher V%s started...\n\r", VERSION);
-    printf("DFU protocol version: %s\n\r", PROTOCOL_VERSION);
+    printf("DFU Flasher %d.%02d started...\n\r", VERSION >> 8, VERSION & 0xff);
+    printf("DFU protocol version: %d.%02d\n\r", PROTO_VERSION >> 8, PROTO_VERSION & 0xff);
 #endif
 
     comm.stop = false;
     board_usb_init(&comm);
     usbd_init(&comm);
     dfud_init(&comm);
+    protod_init(&comm);
 
     if (board_usb_start(&comm))
     {

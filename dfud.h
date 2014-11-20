@@ -9,10 +9,11 @@
 
 #include "defs.h"
 #include "config.h"
+#include "proto.h"
 
 typedef struct {
     int status, state;
-    char buf[USBD_BUF_SIZE];
+    char buf[PAGE_BUF_SIZE + sizeof(PROTO_REQ)];
     int size;
 }DFUD;
 
