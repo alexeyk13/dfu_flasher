@@ -11,6 +11,7 @@
 #include "dfu.h"
 #include "config.h"
 #include "board.h"
+#include "areas.h"
 #if (DFU_DEBUG) && (PROTO_DEBUG)
 #include "dbg.h"
 #endif
@@ -18,25 +19,42 @@
 #if (PROTO_ENABLE_UPLOAD)
 static inline int protod_cmd_read(COMM* comm, unsigned int addr, unsigned int size, int* tx_size)
 {
-    //TODO: check size/addr here
-    int res = board_flash_read(comm, addr, comm->dfud.buf, size);
-    if (res == DFU_STATUS_OK)
-        *tx_size = usbd_tx(comm, comm->dfud.buf, size);
-    return res;
+    int i;
+    for (i = 0; i < READ_AREAS_COUNT; ++i)
+    {
+        if (__READ_AREAS[i].addr <= addr && __READ_AREAS[i].addr + __READ_AREAS[i].size >= addr + size)
+        {
+            int res = board_flash_read(comm, addr, comm->dfud.buf, size);
+            if (res == DFU_STATUS_OK)
+                *tx_size = usbd_tx(comm, comm->dfud.buf, size);
+            return res;
+        }
+    }
+    return DFU_STATUS_ADDRESS;
 }
 
 #endif
 
 static inline int protod_cmd_erase(COMM* comm, unsigned int addr, unsigned int size)
 {
-    //TODO: check size/addr here
-    return board_flash_erase(comm, addr, size);
+    int i;
+    for (i = 0; i < WRITE_AREAS_COUNT; ++i)
+    {
+        if (__WRITE_AREAS[i].addr <= addr && __WRITE_AREAS[i].addr + __WRITE_AREAS[i].size >= addr + size)
+            return board_flash_erase(comm, addr, size);
+    }
+    return DFU_STATUS_ADDRESS;
 }
 
 static inline int protod_cmd_write(COMM* comm, unsigned int addr, const char* buf, unsigned int size)
 {
-    //TODO: check size/addr here
-    return board_flash_write(comm, addr, buf, size);
+    int i;
+    for (i = 0; i < WRITE_AREAS_COUNT; ++i)
+    {
+        if (__WRITE_AREAS[i].addr <= addr && __WRITE_AREAS[i].addr + __WRITE_AREAS[i].size >= addr + size)
+            return board_flash_write(comm, addr, buf, size);
+    }
+    return DFU_STATUS_ADDRESS;
 }
 
 static inline int protod_cmd_version(COMM* comm, int* tx_size)
@@ -106,9 +124,6 @@ int protod_rx(COMM* comm)
         printf("cmd erase %#X-%#X\n\r", req->param1, req->param1 + req->param2);
 #endif
         res = protod_cmd_erase(comm, req->param1, req->param2);
-        break;
-    case PROTO_CMD_STATUS:
-        printf("cmd status\n\r");
         break;
     case PROTO_CMD_LEAVE:
 #if (DFU_DEBUG) && (PROTO_DEBUG)

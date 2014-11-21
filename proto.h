@@ -16,7 +16,6 @@
 #define PROTO_CMD_READ                      'r'
 #define PROTO_CMD_WRITE                     'w'
 #define PROTO_CMD_ERASE                     'e'
-#define PROTO_CMD_STATUS                    's'
 #define PROTO_CMD_VERSION                   'v'
 #define PROTO_CMD_LEAVE                     'l'
 
