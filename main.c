@@ -16,9 +16,7 @@
 #include "dbg.h"
 #endif
 
-void main() __attribute__ ((section (".loader")));
-
-void flasher()
+void main()
 {
     COMM comm;
     board_init();
@@ -56,12 +54,5 @@ void flasher()
     printf("DFU Flasher reset\n\r");
 #endif
     board_reset();
-}
-
-void main()
-{
-    //because core_init can change stack, all local vars must be defined after this call
-    core_init();
-    flasher();
     for (;;) {}
 }

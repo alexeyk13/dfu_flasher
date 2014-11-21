@@ -33,6 +33,12 @@ static inline int protod_cmd_erase(COMM* comm, unsigned int addr, unsigned int s
     return board_flash_erase(comm, addr, size);
 }
 
+static inline int protod_cmd_write(COMM* comm, unsigned int addr, const char* buf, unsigned int size)
+{
+    //TODO: check size/addr here
+    return board_flash_write(comm, addr, buf, size);
+}
+
 static inline int protod_cmd_version(COMM* comm, int* tx_size)
 {
     PROTO_VERSION_RESP version;
@@ -90,11 +96,14 @@ int protod_rx(COMM* comm)
         res = DFU_STATUS_OK;
         break;
     case PROTO_CMD_WRITE:
-        printf("cmd write\n\r");
+#if (DFU_DEBUG) && (PROTO_DEBUG)
+        printf("cmd write %#X-%#X\n\r", req->param1, req->param1 + req->param2);
+#endif
+        res = protod_cmd_write(comm, req->param1, comm->dfud.buf + sizeof(PROTO_REQ), req->param2);
         break;
     case PROTO_CMD_ERASE:
 #if (DFU_DEBUG) && (PROTO_DEBUG)
-        printf("cmd erase\n\r");
+        printf("cmd erase %#X-%#X\n\r", req->param1, req->param1 + req->param2);
 #endif
         res = protod_cmd_erase(comm, req->param1, req->param2);
         break;

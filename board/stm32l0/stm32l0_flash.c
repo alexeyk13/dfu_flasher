@@ -19,6 +19,8 @@
 
 #define FLASH_PAGE_SIZE                         128
 
+#define FLASH_SR_ERROR                          (FLASH_SR_WRPERR | FLASH_SR_PGAERR | FLASH_SR_SIZERR)
+
 void flash_init()
 {
     //unlock PELOCK bit
@@ -52,10 +54,32 @@ int board_flash_erase(COMM* comm, unsigned int addr, unsigned int size)
     *((uint32_t*)addr) = 0;
     while (FLASH->SR & FLASH_SR_BSY) {}
 
-    if (FLASH->SR & FLASH_SR_WRPERR)
+    if (FLASH->SR & FLASH_SR_ERROR)
     {
-        FLASH->SR |= FLASH_SR_WRPERR;
+        FLASH->SR |= FLASH_SR_ERROR;
         return DFU_STATUS_ERASE;
+    }
+    return DFU_STATUS_OK;
+}
+
+int board_flash_write(COMM* comm, unsigned int addr, const char* buf, unsigned int size)
+{
+    int i;
+    if ((size != FLASH_PAGE_SIZE) || (addr % FLASH_PAGE_SIZE))
+        return DFU_STATUS_PROG;
+
+    while (FLASH->SR & FLASH_SR_BSY) {}
+    FLASH->PECR = FLASH_PECR_PROG;
+
+    for (i = 0; i < FLASH_PAGE_SIZE / sizeof(uint32_t); ++i)
+    {
+        ((uint32_t*)addr)[i] = ((const uint32_t*)buf)[i];
+        while (FLASH->SR & FLASH_SR_BSY) {}
+        if (FLASH->SR & FLASH_SR_ERROR)
+        {
+            FLASH->SR |= FLASH_SR_ERROR;
+            return DFU_STATUS_PROG;
+        }
     }
     return DFU_STATUS_OK;
 }

@@ -19,12 +19,13 @@
   .equ   ICPR0,                 0xe000e280
 
 /* exported global constant and functions */
-	.global core_init
 	.global delay_ms
 	.global delay_us
 
+	.extern main
+
 /*********************** reset vector handler *********************/
-	.section  .text, "ax"
+	.section  .init, "ax"
 	.syntax unified
 #if defined(CORTEX_M3)
 	.cpu cortex-m3
@@ -36,9 +37,8 @@
 	.thumb
 
 	.thumb_func
-core_init:
+init:
 	cpsid i
-	mov	r3, lr
 
 	@disable all interrupts
 	ldr	r0, =0xffffffff
@@ -73,7 +73,7 @@ core_init:
 	ldr	r0, =SP_PTR
 	mov	sp, r0
 
-	bx		r3
+	b		main
 
 	.thumb_func
 delay_ms:
